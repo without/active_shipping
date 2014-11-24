@@ -263,7 +263,7 @@ module ActiveMerchant
           root_node << XmlNode.new('Request') do |request|
             # Required element and the text must be "ShipConfirm"
             request << XmlNode.new('RequestAction', 'ShipConfirm')
-            # Required element cotnrols level of address validation.
+            # Required element controls level of address validation.
             request << XmlNode.new('RequestOption', options[:optional_processing] || 'validate')
             # Optional element to identify transactions between client and server.
             if options[:customer_context]
@@ -273,6 +273,7 @@ module ActiveMerchant
             end
           end
           root_node   << XmlNode.new('Shipment') do |shipment|
+            shipment  << XmlNode.new('Description', options[:description])
             # Required element.
             shipment  << XmlNode.new('Service') do |service|
               service << XmlNode.new('Code', options[:service_code] || '14')
