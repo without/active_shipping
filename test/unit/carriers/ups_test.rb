@@ -310,4 +310,18 @@ class UPSTest < Test::Unit::TestCase
     assert_equal address.text, shipper.address1
     refute_equal address.text, pickup.address1
   end
+
+  def test_label_request_includes_description
+    # description is required for customs clearance at national borders
+    description = 'test description'
+    result   = Nokogiri::XML(@carrier.send(:build_shipment_request,
+                                           @locations[:beverly_hills],
+                                           @locations[:annapolis],
+                                           @packages.values_at(
+                                              :chocolate_stuff),
+                                           :test => true,
+                                           :description => description))
+
+    assert_equal description, result.search('/ShipmentConfirmRequest/Shipment/Description').text
+  end
 end
