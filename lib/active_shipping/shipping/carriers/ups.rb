@@ -306,12 +306,29 @@ module ActiveMerchant
                 ref_node  << XmlNode.new("Value", options[:shipment][:reference_number][:value])
               end
             end
-            # Conditionally required.  Either this element or an ItemizedPaymentInformation
-            # is needed.  However, only PaymentInformation is not implemented.
-            shipment      << XmlNode.new('PaymentInformation') do |payment|
-              payment     << XmlNode.new('Prepaid') do |prepay|
-                prepay    << XmlNode.new('BillShipper') do |bill|
-                  bill    << XmlNode.new('AccountNumber', options[:origin_account])
+            if (duty_account = options[:third_party_duty_and_taxes_account]).blank?
+              # Conditionally required.  Either this element or an
+              # ItemizedPaymentInformation is needed.
+              shipment      << XmlNode.new('PaymentInformation') do |payment|
+                payment     << XmlNode.new('Prepaid') do |prepay|
+                  prepay    << XmlNode.new('BillShipper') do |bill|
+                    bill    << XmlNode.new('AccountNumber', options[:origin_account])
+                  end
+                end
+              end
+            else
+              shipment      << XmlNode.new('ItemizedPaymentInformation') do |payment|
+                payment     << XmlNode.new('ShipmentCharge') do |charge|
+                  charge    << XmlNode.new('Type', '01')
+                  charge    << XmlNode.new('BillShipper') do |bill|
+                    bill    << XmlNode.new('AccountNumber', options[:origin_account])
+                  end
+                end
+                payment     << XmlNode.new('ShipmentCharge') do |charge|
+                  charge    << XmlNode.new('Type', '02')
+                  charge    << XmlNode.new(duty_account == options[:origin_account] ? 'BillShipper' : 'BillThirdParty') do |bill|
+                    bill    << XmlNode.new('AccountNumber', duty_account)
+                  end
                 end
               end
             end
