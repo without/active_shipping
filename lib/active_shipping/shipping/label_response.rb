@@ -5,9 +5,11 @@ module ActiveMerchant #:nodoc:
 
     class LabelResponse < Response
       attr :params # maybe?
+      attr :shipment_id
 
       def initialize(success, message, params = {}, options = {})
         @params = params
+        @shipment_id = params["ShipmentResults"]["ShipmentIdentificationNumber"]
         super
       end
 

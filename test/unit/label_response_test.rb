@@ -15,5 +15,6 @@ class LabelResponseTest < Test::Unit::TestCase
     assert_equal 1, response.labels.count
     assert_equal '1ZA03R691591538440', response.labels.first[:tracking_number]
     assert response.labels.first[:image]
+    assert_equal '1ZA03R691591538440', response.shipment_id
   end
 end

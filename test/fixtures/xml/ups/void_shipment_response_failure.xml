@@ -1,0 +1,13 @@
+<?xml version="1.0"?>
+<VoidShipmentResponse>
+  <Response>
+    <TransactionReference></TransactionReference>
+    <ResponseStatusCode>0</ResponseStatusCode>
+    <ResponseStatusDescription>Failure</ResponseStatusDescription>
+    <Error>
+      <ErrorSeverity>Hard</ErrorSeverity>
+      <ErrorCode>190102</ErrorCode>
+      <ErrorDescription>No shipment found within the allowed void period</ErrorDescription>
+    </Error>
+  </Response>
+</VoidShipmentResponse>
