@@ -16,7 +16,8 @@ module ActiveMerchant
         :rates => 'ups.app/xml/Rate',
         :track => 'ups.app/xml/Track',
         :ship_confirm => 'ups.app/xml/ShipConfirm',
-        :ship_accept => 'ups.app/xml/ShipAccept'
+        :ship_accept => 'ups.app/xml/ShipAccept',
+        :void => 'ups.app/xml/Void'
       }
 
       PICKUP_CODES = HashWithIndifferentAccess.new(
@@ -163,6 +164,15 @@ module ActiveMerchant
           raise "Could not obtain shipping label. #{e.message}."
 
         end
+      end
+
+      def void_shipment(shipment_identification_number, options = {})
+        options = @options.merge(options)
+        access_request = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" + build_access_request
+        void_request = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" + build_void_request(shipment_identification_number)
+        response = commit(:void, save_request(access_request + void_request), (options[:test] || false))
+        logger.debug(response) if logger
+        parse_void_response(response)
       end
 
       protected
@@ -464,6 +474,17 @@ module ActiveMerchant
         end
       end
 
+      def build_void_request(shipment_identification_number)
+        xml_request = XmlNode.new('VoidShipmentRequest') do |root_node|
+          root_node << XmlNode.new('Request') do |request|
+            request << XmlNode.new('RequestAction', '1')
+            request << XmlNode.new('RequestOption', '1')
+          end
+          root_node << XmlNode.new('ShipmentIdentificationNumber', shipment_identification_number)
+        end
+        xml_request.to_s
+      end
+
       def parse_rate_response(origin, destination, packages, response, options = {})
         rates = []
 
@@ -641,6 +662,14 @@ module ActiveMerchant
         message = response_message(xml)
 
         LabelResponse.new(success, message, Hash.from_xml(response).values.first)
+      end
+
+      def parse_void_response(response)
+        xml = REXML::Document.new(response)
+        success = response_success?(xml)
+        message = response_message(xml)
+        Response.new(success, message, Hash.from_xml(response))
+        success
       end
 
       def commit(action, request, test = false)

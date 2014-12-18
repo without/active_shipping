@@ -324,4 +324,23 @@ class UPSTest < Test::Unit::TestCase
 
     assert_equal description, result.search('/ShipmentConfirmRequest/Shipment/Description').text
   end
+
+  def test_void_shipment
+    shipment_identification_number = '1ZA03R691591538440'
+    result = Nokogiri::XML(@carrier.send(:build_void_request, shipment_identification_number))
+    shipment_id_node = result.search('/VoidShipmentRequest/ShipmentIdentificationNumber')
+    assert_equal shipment_identification_number, shipment_id_node.text
+  end
+
+  def test_parse_void_response_success
+    void_response = xml_fixture('ups/void_shipment_response_success')
+    assert @carrier.send(:parse_void_response, void_response)
+  end
+
+  def test_parse_void_response_success
+    void_response = xml_fixture('ups/void_shipment_response_failure')
+    assert_raises(ActiveMerchant::Shipping::ResponseError) do
+      @carrier.send(:parse_void_response, void_response)
+    end
+  end
 end
