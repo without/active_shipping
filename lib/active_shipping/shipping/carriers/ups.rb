@@ -103,6 +103,11 @@ module ActiveMerchant
 
       IMPERIAL_COUNTRIES = %w(US LR MM)
 
+      CURRENCY_CODES = {
+        "US dollar" => "USD",
+        "Canadian dollar" => "CAD"
+      }
+
       def requirements
         [:key, :login, :password]
       end
@@ -337,6 +342,14 @@ module ActiveMerchant
             packages.each do |package|
               shipment << build_package_node(package, options)
             end
+            if international_forms = get_international_forms(options)
+              shipment << XmlNode.new("InternationalForms") do |forms|
+                if get_invoice(international_forms)
+                  forms << XmlNode.new("FormType", "01")
+                  forms << build_invoice_node(invoice_data)
+                end
+              end
+            end
           end
           # I don't know all of the options that UPS supports for labels
           # so I'm going with something very simple for now.
@@ -462,6 +475,30 @@ module ActiveMerchant
           #                   * Shipment/Package/PackageServiceOptions element
           #                   * Shipment/Package/AdditionalHandling element
         end
+      end
+
+      def build_invoice_node(forms, invoice_hash)
+        forms << XmlNode.new("CurrencyCode", invoice_hash[:currency_code])
+        forms << XmlNode.new("InvoiceNumber", invoice_hash[:number])
+        forms << XmlNode.new("InvoiceDate", invoice_hash[:date])
+        forms << XmlNode.new("PurchaseOrderNumber", invoice_hash[:po_number])
+        products = invoice_hash[:products]
+        products.each do |product|
+          forms << XmlNode.new("Product") do |prod|
+            prod << XmlNode.new("Description", product[:description])
+            prod << XmlNode.new("Unit") do |unit|
+              unit << XmlNode.new("Number", product[:number])
+              unit << XmlNode.new("UnitOfMeasurement") do |uom|
+                uom << XmlNode.new("Code", product[:unit_code])
+              end
+              unit << XmlNode.new("Value", product[:value])
+            end
+            prod << XmlNode.new("PartNumber", product[:part_number])
+            prod << XmlNode.new("OriginCountryCode", product[:country_of_origin])
+          end
+        end
+        forms << XmlNode.new("ReasonForExport", invoice_hash[:reason_for_export])
+        forms << XmlNode.new("DeclarationStatement", invoice_hash[:declaration])
       end
 
       def parse_rate_response(origin, destination, packages, response, options = {})
