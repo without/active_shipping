@@ -97,6 +97,49 @@ module ActiveMerchant
         'M' => :manifest_pickup
       )
 
+      INTERNATIONAL_FORMS_UNIT_MAPPINGS = {
+        barrel:        'BA',
+        bundle:        'BE',
+        bag:           'BG',
+        bunch:         'BH',
+        box:           'BOX',
+        bolt:          'BT',
+        butt:          'BU',
+        canister:      'CI',
+        centimeter:    'CM',
+        container:     'CON',
+        crate:         'CR',
+        case:          'CS',
+        carton:        'CT',
+        cylinder:      'CY',
+        dozen:         'DOZ',
+        each:          'EA',
+        envelope:      'EN',
+        feet:          'FT',
+        kilogram:      'KG',
+        kilograms:     'KGS',
+        pound:         'LB',
+        pounds:        'LBS',
+        liter:         'L',
+        meter:         'M',
+        number:        'NMB',
+        packet:        'PA',
+        pallet:        'PAL',
+        piece:         'PC',
+        pieces:        'PCS',
+        proof_liters:  'PF',
+        package:       'PKG',
+        pair:          'PR',
+        pairs:         'PRS',
+        roll:          'RL',
+        set:           'SET',
+        square_meters: 'SME',
+        square_yards:  'SYD',
+        tube:          'TU',
+        yard:          'YD',
+        other:         'OTH'
+      }
+
       # From http://en.wikipedia.org/w/index.php?title=European_Union&oldid=174718707 (Current as of November 30, 2007)
       EU_COUNTRY_CODES = %w(GB AT BE BG CY CZ DK EE FI FR DE GR HU IE IT LV LT LU MT NL PL PT RO SK SI ES SE)
 
@@ -352,10 +395,8 @@ module ActiveMerchant
             packages.each do |package|
               shipment << build_package_node(package, options)
             end
-            if international_forms = options[:international_forms]
-              international_forms_node = build_international_forms_node(international_forms)
-              shipment << international_forms_node if international_forms_node
-            end
+            international_forms_node = build_international_forms_node(options)
+            shipment << international_forms_node if international_forms_node
           end
           # I don't know all of the options that UPS supports for labels
           # so I'm going with something very simple for now.
@@ -394,23 +435,30 @@ module ActiveMerchant
       end
 
       def build_location_node(name, location, options = {})
-        # not implemented:  * Shipment/Shipper/Name element
-        #                   * Shipment/(ShipTo|ShipFrom)/CompanyName element
-        #                   * Shipment/(Shipper|ShipTo|ShipFrom)/AttentionName element
-        #                   * Shipment/(Shipper|ShipTo|ShipFrom)/TaxIdentificationNumber element
-        location_node = XmlNode.new(name) do |location_node|
+        build_basic_location_node(name, location) do |location_node|
           # You must specify the shipper name when creating labels.
           if shipper_name = (options[:origin_name] || @options[:origin_name])
             location_node << XmlNode.new('Name', shipper_name)
           end
-          location_node << XmlNode.new('PhoneNumber', location.phone.gsub(/[^\d]/, '')) unless location.phone.blank?
-          location_node << XmlNode.new('FaxNumber', location.fax.gsub(/[^\d]/, '')) unless location.fax.blank?
 
           if name == 'Shipper' and (origin_account = options[:origin_account] || @options[:origin_account])
             location_node << XmlNode.new('ShipperNumber', origin_account)
           elsif name == 'ShipTo' and (destination_account = options[:destination_account] || @options[:destination_account])
             location_node << XmlNode.new('ShipperAssignedIdentificationNumber', destination_account)
           end
+        end
+      end
+
+      def build_basic_location_node(name, location)
+        # not implemented:  * Shipment/Shipper/Name element
+        #                   * Shipment/(ShipTo|ShipFrom)/CompanyName element
+        #                   * Shipment/(Shipper|ShipTo|ShipFrom)/AttentionName element
+        #                   * Shipment/(Shipper|ShipTo|ShipFrom)/TaxIdentificationNumber element
+        location_node = XmlNode.new(name) do |location_node|
+          yield location_node if block_given?
+
+          location_node << XmlNode.new('PhoneNumber', location.phone.gsub(/[^\d]/, '')) unless location.phone.blank?
+          location_node << XmlNode.new('FaxNumber', location.fax.gsub(/[^\d]/, '')) unless location.fax.blank?
 
           if name = location.company_name || location.name
             location_node << XmlNode.new('CompanyName', name)
@@ -483,13 +531,15 @@ module ActiveMerchant
         end
       end
 
-      def build_international_forms_node(international_forms)
+      def build_international_forms_node(options)
         root_node = nil
+        international_forms = options[:international_forms] || []
+        international_forms = [international_forms] unless international_forms.respond_to? :each
         unless international_forms.empty?
           international_forms.each do |intl_form|
             root_node = XmlNode.new("InternationalForms") do |forms|
-              case international_form
-              when Invoice then build_invoice_node(forms, intl_form)
+              case intl_form
+              when InternationalForms::Invoice then build_invoice_node(forms, intl_form)
               end
             end
           end
@@ -499,12 +549,15 @@ module ActiveMerchant
 
       def build_invoice_node(forms_node, invoice)
         forms_node << XmlNode.new("FormType", "01")
-        forms << XmlNode.new("CurrencyCode", invoice.currency_code)
-        forms << XmlNode.new("InvoiceNumber", invoice.number)
-        forms << XmlNode.new("InvoiceDate", invoice.date)
-        forms << XmlNode.new("PurchaseOrderNumber", invoice_hash[:po_number])
+        forms_node << XmlNode.new("Contacts") do |contacts|
+          contacts << build_basic_location_node('SoldTo', invoice.sold_to)
+        end
+        forms_node << XmlNode.new("CurrencyCode", invoice.currency_code)
+        forms_node << XmlNode.new("InvoiceNumber", invoice.number)
+        forms_node << XmlNode.new("InvoiceDate", "%4d%2d%2d" % [invoice.date.year, invoice.date.month, invoice.date.day])
+        forms_node << XmlNode.new("PurchaseOrderNumber", invoice.po_number)
         invoice.items.each do |item|
-          forms << XmlNode.new("Product") do |prod|
+          forms_node << XmlNode.new("Product") do |prod|
             prod << XmlNode.new("Description", item.description)
             prod << XmlNode.new("Unit") do |unit|
               unit << XmlNode.new("Number", item.quantity)
@@ -517,8 +570,8 @@ module ActiveMerchant
             prod << XmlNode.new("OriginCountryCode", item.country_of_origin)
           end
         end
-        forms << XmlNode.new("ReasonForExport", invoice.reason_for_export)
-        forms << XmlNode.new("DeclarationStatement", invoice.declaration)
+        forms_node << XmlNode.new("ReasonForExport", invoice.reason_for_export)
+        forms_node << XmlNode.new("DeclarationStatement", invoice.declaration)
       end
 
       def build_void_request(shipment_identification_number)
