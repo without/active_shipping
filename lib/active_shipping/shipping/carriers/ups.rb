@@ -16,7 +16,8 @@ module ActiveMerchant
         :rates => 'ups.app/xml/Rate',
         :track => 'ups.app/xml/Track',
         :ship_confirm => 'ups.app/xml/ShipConfirm',
-        :ship_accept => 'ups.app/xml/ShipAccept'
+        :ship_accept => 'ups.app/xml/ShipAccept',
+        :void => 'ups.app/xml/Void'
       }
 
       PICKUP_CODES = HashWithIndifferentAccess.new(
@@ -96,12 +97,60 @@ module ActiveMerchant
         'M' => :manifest_pickup
       )
 
+      INTERNATIONAL_FORMS_UNIT_MAPPINGS = {
+        barrel:        'BA',
+        bundle:        'BE',
+        bag:           'BG',
+        bunch:         'BH',
+        box:           'BOX',
+        bolt:          'BT',
+        butt:          'BU',
+        canister:      'CI',
+        centimeter:    'CM',
+        container:     'CON',
+        crate:         'CR',
+        case:          'CS',
+        carton:        'CT',
+        cylinder:      'CY',
+        dozen:         'DOZ',
+        each:          'EA',
+        envelope:      'EN',
+        feet:          'FT',
+        kilogram:      'KG',
+        kilograms:     'KGS',
+        pound:         'LB',
+        pounds:        'LBS',
+        liter:         'L',
+        meter:         'M',
+        number:        'NMB',
+        packet:        'PA',
+        pallet:        'PAL',
+        piece:         'PC',
+        pieces:        'PCS',
+        proof_liters:  'PF',
+        package:       'PKG',
+        pair:          'PR',
+        pairs:         'PRS',
+        roll:          'RL',
+        set:           'SET',
+        square_meters: 'SME',
+        square_yards:  'SYD',
+        tube:          'TU',
+        yard:          'YD',
+        other:         'OTH'
+      }
+
       # From http://en.wikipedia.org/w/index.php?title=European_Union&oldid=174718707 (Current as of November 30, 2007)
       EU_COUNTRY_CODES = %w(GB AT BE BG CY CZ DK EE FI FR DE GR HU IE IT LV LT LU MT NL PL PT RO SK SI ES SE)
 
       US_TERRITORIES_TREATED_AS_COUNTRIES = %w(AS FM GU MH MP PW PR VI)
 
       IMPERIAL_COUNTRIES = %w(US LR MM)
+
+      CURRENCY_CODES = {
+        "US dollar" => "USD",
+        "Canadian dollar" => "CAD"
+      }
 
       def requirements
         [:key, :login, :password]
@@ -163,6 +212,15 @@ module ActiveMerchant
           raise "Could not obtain shipping label. #{e.message}."
 
         end
+      end
+
+      def void_shipment(shipment_identification_number, options = {})
+        options = @options.merge(options)
+        access_request = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" + build_access_request
+        void_request = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" + build_void_request(shipment_identification_number)
+        response = commit(:void, save_request(access_request + void_request), (options[:test] || false))
+        logger.debug(response) if logger
+        parse_void_response(response)
       end
 
       protected
@@ -337,6 +395,8 @@ module ActiveMerchant
             packages.each do |package|
               shipment << build_package_node(package, options)
             end
+            international_forms_node = build_international_forms_node(options)
+            shipment << international_forms_node if international_forms_node
           end
           # I don't know all of the options that UPS supports for labels
           # so I'm going with something very simple for now.
@@ -375,23 +435,30 @@ module ActiveMerchant
       end
 
       def build_location_node(name, location, options = {})
-        # not implemented:  * Shipment/Shipper/Name element
-        #                   * Shipment/(ShipTo|ShipFrom)/CompanyName element
-        #                   * Shipment/(Shipper|ShipTo|ShipFrom)/AttentionName element
-        #                   * Shipment/(Shipper|ShipTo|ShipFrom)/TaxIdentificationNumber element
-        location_node = XmlNode.new(name) do |location_node|
+        build_basic_location_node(name, location) do |location_node|
           # You must specify the shipper name when creating labels.
           if shipper_name = (options[:origin_name] || @options[:origin_name])
             location_node << XmlNode.new('Name', shipper_name)
           end
-          location_node << XmlNode.new('PhoneNumber', location.phone.gsub(/[^\d]/, '')) unless location.phone.blank?
-          location_node << XmlNode.new('FaxNumber', location.fax.gsub(/[^\d]/, '')) unless location.fax.blank?
 
           if name == 'Shipper' and (origin_account = options[:origin_account] || @options[:origin_account])
             location_node << XmlNode.new('ShipperNumber', origin_account)
           elsif name == 'ShipTo' and (destination_account = options[:destination_account] || @options[:destination_account])
             location_node << XmlNode.new('ShipperAssignedIdentificationNumber', destination_account)
           end
+        end
+      end
+
+      def build_basic_location_node(name, location)
+        # not implemented:  * Shipment/Shipper/Name element
+        #                   * Shipment/(ShipTo|ShipFrom)/CompanyName element
+        #                   * Shipment/(Shipper|ShipTo|ShipFrom)/AttentionName element
+        #                   * Shipment/(Shipper|ShipTo|ShipFrom)/TaxIdentificationNumber element
+        location_node = XmlNode.new(name) do |location_node|
+          yield location_node if block_given?
+
+          location_node << XmlNode.new('PhoneNumber', location.phone.gsub(/[^\d]/, '')) unless location.phone.blank?
+          location_node << XmlNode.new('FaxNumber', location.fax.gsub(/[^\d]/, '')) unless location.fax.blank?
 
           if name = location.company_name || location.name
             location_node << XmlNode.new('CompanyName', name)
@@ -462,6 +529,60 @@ module ActiveMerchant
           #                   * Shipment/Package/PackageServiceOptions element
           #                   * Shipment/Package/AdditionalHandling element
         end
+      end
+
+      def build_international_forms_node(options)
+        root_node = nil
+        international_forms = options[:international_forms] || []
+        international_forms = [international_forms] unless international_forms.respond_to? :each
+        unless international_forms.empty?
+          international_forms.each do |intl_form|
+            root_node = XmlNode.new("InternationalForms") do |forms|
+              case intl_form
+              when InternationalForms::Invoice then build_invoice_node(forms, intl_form)
+              end
+            end
+          end
+        end
+        root_node
+      end
+
+      def build_invoice_node(forms_node, invoice)
+        forms_node << XmlNode.new("FormType", "01")
+        forms_node << XmlNode.new("Contacts") do |contacts|
+          contacts << build_basic_location_node('SoldTo', invoice.sold_to)
+        end
+        forms_node << XmlNode.new("CurrencyCode", invoice.currency_code)
+        forms_node << XmlNode.new("InvoiceNumber", invoice.number)
+        forms_node << XmlNode.new("InvoiceDate", "%4d%2d%2d" % [invoice.date.year, invoice.date.month, invoice.date.day])
+        forms_node << XmlNode.new("PurchaseOrderNumber", invoice.po_number)
+        invoice.items.each do |item|
+          forms_node << XmlNode.new("Product") do |prod|
+            prod << XmlNode.new("Description", item.description)
+            prod << XmlNode.new("Unit") do |unit|
+              unit << XmlNode.new("Number", item.quantity)
+              unit << XmlNode.new("UnitOfMeasurement") do |uom|
+                uom << XmlNode.new("Code", item.unit_code)
+              end
+              unit << XmlNode.new("Value", item.unit_value)
+            end
+            prod << XmlNode.new("PartNumber", item.part_number)
+            prod << XmlNode.new("OriginCountryCode", item.country_of_origin)
+          end
+        end
+        forms_node << XmlNode.new("ReasonForExport", invoice.reason_for_export)
+        forms_node << XmlNode.new("DeclarationStatement", invoice.declaration)
+      end
+
+      def build_void_request(shipment_identification_number)
+        xml_request = XmlNode.new('VoidShipmentRequest') do |root_node|
+          root_node << XmlNode.new('Request') do |request|
+            request << XmlNode.new('RequestAction', '1')
+            request << XmlNode.new('RequestOption', '1')
+          end
+          root_node << XmlNode.new('ShipmentIdentificationNumber', shipment_identification_number)
+        end
+        xml_request.to_s
       end
 
       def parse_rate_response(origin, destination, packages, response, options = {})
@@ -641,6 +762,14 @@ module ActiveMerchant
         message = response_message(xml)
 
         LabelResponse.new(success, message, Hash.from_xml(response).values.first)
+      end
+
+      def parse_void_response(response)
+        xml = REXML::Document.new(response)
+        success = response_success?(xml)
+        message = response_message(xml)
+        Response.new(success, message, Hash.from_xml(response))
+        success
       end
 
       def commit(action, request, test = false)

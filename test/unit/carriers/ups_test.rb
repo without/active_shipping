@@ -324,4 +324,48 @@ class UPSTest < Test::Unit::TestCase
 
     assert_equal description, result.search('/ShipmentConfirmRequest/Shipment/Description').text
   end
+
+  def test_void_shipment
+    shipment_identification_number = '1ZA03R691591538440'
+    result = Nokogiri::XML(@carrier.send(:build_void_request, shipment_identification_number))
+    shipment_id_node = result.search('/VoidShipmentRequest/ShipmentIdentificationNumber')
+    assert_equal shipment_identification_number, shipment_id_node.text
+  end
+
+  def test_parse_void_response_success
+    void_response = xml_fixture('ups/void_shipment_response_success')
+    assert @carrier.send(:parse_void_response, void_response)
+  end
+
+  def test_parse_void_response_failure
+    void_response = xml_fixture('ups/void_shipment_response_failure')
+    assert_raises(ActiveMerchant::Shipping::ResponseError) do
+      @carrier.send(:parse_void_response, void_response)
+    end
+  end
+
+  def test_build_invoice_node
+    sold_to = @locations[:new_york_with_name]
+    invoice = InternationalForms::Invoice.new('CAD', Date.today, sold_to, 'sale', 'declaration', {number: 'number', po_number: 'PO'})
+    invoice.items << InternationalForms::InvoiceItem.new('costume jewellery', 1, :each, 3.99, 'ZXCVBNM', 'KE')
+    node = @carrier.send(:build_international_forms_node, international_forms: invoice)
+    result = Nokogiri::XML(node.to_s)
+    assert_equal '01', result.search('/InternationalForms/FormType').text
+    assert_equal @locations[:new_york_with_name].name, result.search('/InternationalForms/Contacts/SoldTo/AttentionName').text
+  end
+
+  def test_build_shipment_request_with_invoice
+    sold_to = @locations[:new_york_with_name]
+      invoice = InternationalForms::Invoice.new('CAD', Date.today, sold_to, 'sale', 'declaration', {number: 'number', po_number: 'PO'})
+      invoice.items << InternationalForms::InvoiceItem.new('costume jewellery', 1, :each, 3.99, 'ZXCVBNM', 'KE')
+      result = Nokogiri::XML(@carrier.send(:build_shipment_request, @locations[:beverly_hills], @locations[:annapolis], @packages.values_at(:chocolate_stuff), {international_forms: invoice}))
+      assert_equal '01', result.search('/ShipmentConfirmRequest/Shipment/InternationalForms/FormType').text
+    end
+
+  def test_unit_mappings
+    units_of_measurement = InternationalForms::UNITS_OF_MEASUREMENT
+    mappings = UPS::INTERNATIONAL_FORMS_UNIT_MAPPINGS
+    units_of_measurement.each {|uom| assert mappings[uom] }
+    mappings.keys.each {|uom| assert units_of_measurement.include?(uom) }
+  end
 end
