@@ -436,13 +436,14 @@ module ActiveMerchant
 
       def build_location_node(name, location, options = {})
         build_basic_location_node(name, location) do |location_node|
-          # You must specify the shipper name when creating labels.
-          if shipper_name = (options[:origin_name] || @options[:origin_name])
-            location_node << XmlNode.new('Name', shipper_name)
-          end
-
-          if name == 'Shipper' and (origin_account = options[:origin_account] || @options[:origin_account])
-            location_node << XmlNode.new('ShipperNumber', origin_account)
+          if name == 'Shipper'
+            # You must specify the shipper name when creating labels.
+            if shipper_name = (options[:origin_name] || @options[:origin_name])
+              location_node << XmlNode.new('Name', shipper_name)
+            end
+            if origin_account = options[:origin_account] || @options[:origin_account]
+              location_node << XmlNode.new('ShipperNumber', origin_account)
+            end
           elsif name == 'ShipTo' and (destination_account = options[:destination_account] || @options[:destination_account])
             location_node << XmlNode.new('ShipperAssignedIdentificationNumber', destination_account)
           end
@@ -554,7 +555,7 @@ module ActiveMerchant
         end
         forms_node << XmlNode.new("CurrencyCode", invoice.currency_code)
         forms_node << XmlNode.new("InvoiceNumber", invoice.number)
-        forms_node << XmlNode.new("InvoiceDate", "%4d%2d%2d" % [invoice.date.year, invoice.date.month, invoice.date.day])
+        forms_node << XmlNode.new("InvoiceDate", "%.4d%.2d%.2d" % [invoice.date.year, invoice.date.month, invoice.date.day])
         forms_node << XmlNode.new("PurchaseOrderNumber", invoice.po_number)
         invoice.items.each do |item|
           forms_node << XmlNode.new("Product") do |prod|
