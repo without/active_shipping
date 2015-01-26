@@ -185,8 +185,7 @@ module ActiveMerchant
           confirm_request = build_shipment_request(origin, destination, packages, options)
           logger.debug(confirm_request) if logger
 
-          confirm_response = commit(:ship_confirm, save_request(access_request + confirm_request).tap{|r| Rails.logger.debug r}, (options[:test] || false))
-          Rails.logger.debug confirm_response
+          confirm_response = commit(:ship_confirm, save_request(access_request + confirm_request), (options[:test] || false))
           logger.debug(confirm_response) if logger
 
           # ... now, get the digest, it's needed to get the label.  In theory,
@@ -347,11 +346,13 @@ module ActiveMerchant
               shipment  << build_location_node('ShipFrom', options[:ship_from], {})
             end
             # Optional.
-            if options[:saturday_delivery]
-              shipment << XmlNode.new('ShipmentServiceOptions') do |opts|
-                opts   << XmlNode.new('SaturdayDelivery')
-              end
+            shipment_service_options = XmlNode.new('ShipmentServiceOptions') do |opts|
+              international_forms_node = build_international_forms_node(options)
+              shipment << international_forms_node if international_forms_node
+
+              opts   << XmlNode.new('SaturdayDelivery') if options[:saturday_delivery]
             end
+            shipment << shipment_service_options if shipment_service_options.children.count != 0
             # Optional.
             if options[:origin_account]
               shipment << XmlNode.new('RateInformation') do |rate|
@@ -396,8 +397,6 @@ module ActiveMerchant
             packages.each do |package|
               shipment << build_package_node(package, options)
             end
-            international_forms_node = build_international_forms_node(options)
-            shipment << international_forms_node if international_forms_node
           end
           # I don't know all of the options that UPS supports for labels
           # so I'm going with something very simple for now.
