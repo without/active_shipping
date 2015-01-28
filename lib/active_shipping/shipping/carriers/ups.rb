@@ -436,6 +436,9 @@ module ActiveMerchant
 
       def build_location_node(name, location, options = {})
         build_basic_location_node(name, location) do |location_node|
+          location_node << XmlNode.new('PhoneNumber', location.phone.gsub(/[^\d]/, '')) unless location.phone.blank?
+          location_node << XmlNode.new('FaxNumber', location.fax.gsub(/[^\d]/, '')) unless location.fax.blank?
+
           if name == 'Shipper'
             # You must specify the shipper name when creating labels.
             if shipper_name = (options[:origin_name] || @options[:origin_name])
@@ -465,9 +468,6 @@ module ActiveMerchant
           if name = location.name
             location_node << XmlNode.new('Name', name)
           end
-
-          location_node << XmlNode.new('PhoneNumber', location.phone.gsub(/[^\d]/, '')) unless location.phone.blank?
-          location_node << XmlNode.new('FaxNumber', location.fax.gsub(/[^\d]/, '')) unless location.fax.blank?
 
           if attn = location.name
             location_node << XmlNode.new('AttentionName', attn)
@@ -551,7 +551,11 @@ module ActiveMerchant
       def build_invoice_node(forms_node, invoice)
         forms_node << XmlNode.new("FormType", "01")
         forms_node << XmlNode.new("Contacts") do |contacts|
-          contacts << build_basic_location_node('SoldTo', invoice.sold_to)
+          sold_to = build_basic_location_node('SoldTo', invoice.sold_to)
+          sold_to << XmlNode.new('Phone') do |phone|
+            phone << XmlNode.new('Number', invoice.sold_to.phone)
+          end
+          contacts << sold_to
         end
         forms_node << XmlNode.new("CurrencyCode", invoice.currency_code)
         forms_node << XmlNode.new("InvoiceNumber", invoice.number)
