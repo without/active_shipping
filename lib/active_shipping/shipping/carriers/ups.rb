@@ -458,8 +458,12 @@ module ActiveMerchant
         location_node = XmlNode.new(name) do |location_node|
           yield location_node if block_given?
 
-          if name = location.company_name || location.name
-            location_node << XmlNode.new('CompanyName', name)
+          if company_name = location.company_name
+            location_node << XmlNode.new('CompanyName', company_name)
+          end
+
+          if name = location.name
+            location_node << XmlNode.new('Name', name)
           end
 
           location_node << XmlNode.new('PhoneNumber', location.phone.gsub(/[^\d]/, '')) unless location.phone.blank?
