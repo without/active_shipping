@@ -348,7 +348,7 @@ module ActiveMerchant
             # Optional.
             shipment_service_options = XmlNode.new('ShipmentServiceOptions') do |opts|
               international_forms_node = build_international_forms_node(options)
-              shipment << international_forms_node if international_forms_node
+              opts << international_forms_node if international_forms_node
 
               opts   << XmlNode.new('SaturdayDelivery') if options[:saturday_delivery]
             end
@@ -458,16 +458,12 @@ module ActiveMerchant
         location_node = XmlNode.new(name) do |location_node|
           yield location_node if block_given?
 
-          location_node << XmlNode.new('PhoneNumber', location.phone.gsub(/[^\d]/, '')) unless location.phone.blank?
-          location_node << XmlNode.new('FaxNumber', location.fax.gsub(/[^\d]/, '')) unless location.fax.blank?
-
           if name = location.company_name || location.name
             location_node << XmlNode.new('CompanyName', name)
           end
 
-          if phone = location.phone
-            location_node << XmlNode.new('PhoneNumber', phone)
-          end
+          location_node << XmlNode.new('PhoneNumber', location.phone.gsub(/[^\d]/, '')) unless location.phone.blank?
+          location_node << XmlNode.new('FaxNumber', location.fax.gsub(/[^\d]/, '')) unless location.fax.blank?
 
           if attn = location.name
             location_node << XmlNode.new('AttentionName', attn)
