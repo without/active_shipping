@@ -559,7 +559,7 @@ module ActiveMerchant
             prod << XmlNode.new("Unit") do |unit|
               unit << XmlNode.new("Number", item.quantity)
               unit << XmlNode.new("UnitOfMeasurement") do |uom|
-                uom << XmlNode.new("Code", item.unit_code)
+                uom << XmlNode.new("Code", INTERNATIONAL_FORMS_UNIT_MAPPINGS[item.unit_code])
               end
               unit << XmlNode.new("Value", item.unit_value)
             end

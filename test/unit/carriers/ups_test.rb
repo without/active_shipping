@@ -358,8 +358,8 @@ class UPSTest < Test::Unit::TestCase
     sold_to = @locations[:new_york_with_name]
       invoice = InternationalForms::Invoice.new('CAD', Date.today, sold_to, 'sale', 'declaration', {number: 'number', po_number: 'PO'})
       invoice.items << InternationalForms::InvoiceItem.new('costume jewellery', 1, :each, 3.99, 'ZXCVBNM', 'KE')
-      result = Nokogiri::XML(@carrier.send(:build_shipment_request, @locations[:beverly_hills], @locations[:annapolis], @packages.values_at(:chocolate_stuff), {international_forms: invoice}))
-      assert_equal '01', result.search('/ShipmentConfirmRequest/Shipment/InternationalForms/FormType').text
+      result = Nokogiri::XML(req = @carrier.send(:build_shipment_request, @locations[:beverly_hills], @locations[:annapolis], @packages.values_at(:chocolate_stuff), {international_forms: invoice}))
+      assert_equal '01', result.search('/ShipmentConfirmRequest/Shipment/ShipmentServiceOptions/InternationalForms/FormType').text
     end
 
   def test_unit_mappings
