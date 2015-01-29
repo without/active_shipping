@@ -347,7 +347,7 @@ module ActiveMerchant
             end
             # Optional.
             shipment_service_options = XmlNode.new('ShipmentServiceOptions') do |opts|
-              international_forms_node = build_international_forms_node(options)
+              international_forms_node = build_international_forms_node(shipment, options)
               opts << international_forms_node if international_forms_node
 
               opts   << XmlNode.new('SaturdayDelivery') if options[:saturday_delivery]
@@ -436,9 +436,6 @@ module ActiveMerchant
 
       def build_location_node(name, location, options = {})
         build_basic_location_node(name, location) do |location_node|
-          location_node << XmlNode.new('PhoneNumber', location.phone.gsub(/[^\d]/, '')) unless location.phone.blank?
-          location_node << XmlNode.new('FaxNumber', location.fax.gsub(/[^\d]/, '')) unless location.fax.blank?
-
           if name == 'Shipper'
             # You must specify the shipper name when creating labels.
             if shipper_name = (options[:origin_name] || @options[:origin_name])
@@ -472,6 +469,9 @@ module ActiveMerchant
           if attn = location.name
             location_node << XmlNode.new('AttentionName', attn)
           end
+
+          location_node << XmlNode.new('PhoneNumber', location.phone.gsub(/[^\d]/, '')) unless location.phone.blank?
+          location_node << XmlNode.new('FaxNumber', location.fax.gsub(/[^\d]/, '')) unless location.fax.blank?
 
           location_node << XmlNode.new('Address') do |address|
             address << XmlNode.new("AddressLine1", location.address1) unless location.address1.blank?
@@ -532,7 +532,7 @@ module ActiveMerchant
         end
       end
 
-      def build_international_forms_node(options)
+      def build_international_forms_node(shipment_node, options)
         root_node = nil
         international_forms = options[:international_forms] || []
         international_forms = [international_forms] unless international_forms.respond_to? :each
@@ -540,7 +540,7 @@ module ActiveMerchant
           international_forms.each do |intl_form|
             root_node = XmlNode.new("InternationalForms") do |forms|
               case intl_form
-              when InternationalForms::Invoice then build_invoice_node(forms, intl_form)
+              when InternationalForms::Invoice then build_invoice_node(forms, intl_form, shipment_node)
               end
             end
           end
@@ -548,15 +548,9 @@ module ActiveMerchant
         root_node
       end
 
-      def build_invoice_node(forms_node, invoice)
+      def build_invoice_node(forms_node, invoice, shipment_node)
         forms_node << XmlNode.new("FormType", "01")
-        forms_node << XmlNode.new("Contacts") do |contacts|
-          sold_to = build_basic_location_node('SoldTo', invoice.sold_to)
-          sold_to << XmlNode.new('Phone') do |phone|
-            phone << XmlNode.new('Number', invoice.sold_to.phone)
-          end
-          contacts << sold_to
-        end
+        shipment_node << build_basic_location_node('SoldTo', invoice.sold_to)
         forms_node << XmlNode.new("CurrencyCode", invoice.currency_code)
         forms_node << XmlNode.new("InvoiceNumber", invoice.number)
         forms_node << XmlNode.new("InvoiceDate", "%.4d%.2d%.2d" % [invoice.date.year, invoice.date.month, invoice.date.day])

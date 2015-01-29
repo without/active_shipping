@@ -348,10 +348,11 @@ class UPSTest < Test::Unit::TestCase
     sold_to = @locations[:new_york_with_name]
     invoice = InternationalForms::Invoice.new('CAD', Date.today, sold_to, 'sale', 'declaration', {number: 'number', po_number: 'PO'})
     invoice.items << InternationalForms::InvoiceItem.new('costume jewellery', 1, :each, 3.99, 'ZXCVBNM', 'KE')
-    node = @carrier.send(:build_international_forms_node, international_forms: invoice)
+    node = @carrier.send(:build_international_forms_node, shipment_node = XmlNode.new('Shipment'), international_forms: invoice)
     result = Nokogiri::XML(node.to_s)
+    shipment = Nokogiri::XML(shipment_node.to_s)
     assert_equal '01', result.search('/InternationalForms/FormType').text
-    assert_equal @locations[:new_york_with_name].name, result.search('/InternationalForms/Contacts/SoldTo/AttentionName').text
+    assert_equal @locations[:new_york_with_name].name, shipment.search('/Shipment/SoldTo/AttentionName').text
   end
 
   def test_build_shipment_request_with_invoice
