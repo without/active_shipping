@@ -551,6 +551,9 @@ module ActiveMerchant
       def build_invoice_node(forms_node, invoice, shipment_node)
         forms_node << XmlNode.new("FormType", "01")
         shipment_node << build_basic_location_node('SoldTo', invoice.sold_to)
+        forms_node << XmlNode.new("Contacts") do |contacts|
+          contacts << build_basic_location_node('SoldTo', invoice.sold_to)
+        end
         forms_node << XmlNode.new("CurrencyCode", invoice.currency_code)
         forms_node << XmlNode.new("InvoiceNumber", invoice.number)
         forms_node << XmlNode.new("InvoiceDate", "%.4d%.2d%.2d" % [invoice.date.year, invoice.date.month, invoice.date.day])
