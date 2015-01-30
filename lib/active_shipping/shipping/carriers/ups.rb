@@ -549,9 +549,9 @@ module ActiveMerchant
       end
 
       def build_invoice_node(forms_node, invoice, shipment_node)
-        sold_to = build_basic_location_node('SoldTo', invoice.sold_to)
-        sold_to << XmlNode.new('CompanyName', invoice.sold_to.name)
-        shipment_node << sold_to
+        shipment_node << build_basic_location_node('SoldTo', invoice.sold_to) do |location_node|
+          location_node << XmlNode.new('CompanyName', invoice.sold_to.name)
+        end
         return
         forms_node << XmlNode.new("FormType", "01")
         forms_node << XmlNode.new("CurrencyCode", invoice.currency_code)
