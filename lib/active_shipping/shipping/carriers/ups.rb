@@ -538,19 +538,20 @@ module ActiveMerchant
         international_forms = [international_forms] unless international_forms.respond_to? :each
         unless international_forms.empty?
           international_forms.each do |intl_form|
-            root_node = XmlNode.new("InternationalForms") do |forms|
+            # root_node = XmlNode.new("InternationalForms") do |forms|
               case intl_form
-              when InternationalForms::Invoice then build_invoice_node(forms, intl_form, shipment_node)
+              when InternationalForms::Invoice then build_invoice_node(nil, intl_form, shipment_node)
               end
-            end
+            # end
           end
         end
         root_node
       end
 
       def build_invoice_node(forms_node, invoice, shipment_node)
-        forms_node << XmlNode.new("FormType", "01")
         shipment_node << build_basic_location_node('SoldTo', invoice.sold_to)
+        return
+        forms_node << XmlNode.new("FormType", "01")
         forms_node << XmlNode.new("CurrencyCode", invoice.currency_code)
         forms_node << XmlNode.new("InvoiceNumber", invoice.number)
         forms_node << XmlNode.new("InvoiceDate", "%.4d%.2d%.2d" % [invoice.date.year, invoice.date.month, invoice.date.day])
