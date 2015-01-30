@@ -553,9 +553,9 @@ module ActiveMerchant
         return
         forms_node << XmlNode.new("FormType", "01")
         forms_node << XmlNode.new("CurrencyCode", invoice.currency_code)
-        forms_node << XmlNode.new("InvoiceNumber", invoice.number)
+        forms_node << XmlNode.new("InvoiceNumber", invoice.number) unless invoice.number.blank?
         forms_node << XmlNode.new("InvoiceDate", "%.4d%.2d%.2d" % [invoice.date.year, invoice.date.month, invoice.date.day])
-        forms_node << XmlNode.new("PurchaseOrderNumber", invoice.po_number)
+        forms_node << XmlNode.new("PurchaseOrderNumber", invoice.po_number) unless
         invoice.items.each do |item|
           forms_node << XmlNode.new("Product") do |prod|
             prod << XmlNode.new("Description", item.description)
