@@ -552,6 +552,7 @@ module ActiveMerchant
         shipment_node << build_basic_location_node('SoldTo', invoice.sold_to) do |location_node|
           location_node << XmlNode.new('CompanyName', invoice.sold_to.name)
         end
+        Rails.logger.debug shipment_node.to_s
         return
         forms_node << XmlNode.new("FormType", "01")
         forms_node << XmlNode.new("CurrencyCode", invoice.currency_code)
