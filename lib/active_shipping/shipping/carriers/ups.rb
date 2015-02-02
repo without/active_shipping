@@ -455,7 +455,7 @@ module ActiveMerchant
         #                   * Shipment/(ShipTo|ShipFrom)/CompanyName element
         #                   * Shipment/(Shipper|ShipTo|ShipFrom)/AttentionName element
         #                   * Shipment/(Shipper|ShipTo|ShipFrom)/TaxIdentificationNumber element
-        location_node = XmlNode.new(name) do |location_node|
+        XmlNode.new(name) do |location_node|
           yield location_node if block_given?
 
           if company_name = location.company_name
