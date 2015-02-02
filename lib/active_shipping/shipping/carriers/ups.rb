@@ -466,7 +466,7 @@ module ActiveMerchant
             location_node << XmlNode.new('Name', name)
           end
 
-          if attn = location.name
+          if attn = location.name || location.company_name
             location_node << XmlNode.new('AttentionName', attn)
           end
 
