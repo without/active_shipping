@@ -348,7 +348,7 @@ module ActiveMerchant
             # Optional.
             shipment_service_options = XmlNode.new('ShipmentServiceOptions') do |opts|
               international_forms_node = build_international_forms_node(shipment, options)
-              Rails.logger.debug shipment.to_s
+              Rails.logger.debug "shipment: #{shipment.to_s}"
               opts << international_forms_node if international_forms_node
 
               opts   << XmlNode.new('SaturdayDelivery') if options[:saturday_delivery]
@@ -553,7 +553,6 @@ module ActiveMerchant
         shipment_node << build_basic_location_node('SoldTo', invoice.sold_to) do |location_node|
           location_node << XmlNode.new('CompanyName', invoice.sold_to.name)
         end
-        Rails.logger.debug shipment_node.to_s
         return
         forms_node << XmlNode.new("FormType", "01")
         forms_node << XmlNode.new("CurrencyCode", invoice.currency_code)
