@@ -538,11 +538,11 @@ module ActiveMerchant
         international_forms = [international_forms] unless international_forms.respond_to? :each
         unless international_forms.empty?
           international_forms.each do |intl_form|
-            # root_node = XmlNode.new("InternationalForms") do |forms|
+            root_node = XmlNode.new("InternationalForms") do |forms|
               case intl_form
-              when InternationalForms::Invoice then build_invoice_node(nil, intl_form, shipment_node)
+              when InternationalForms::Invoice then build_invoice_node(forms, intl_form, shipment_node)
               end
-            # end
+            end
           end
         end
         root_node
