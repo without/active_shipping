@@ -368,4 +368,15 @@ class UPSTest < Test::Unit::TestCase
     units_of_measurement.each {|uom| assert mappings[uom] }
     mappings.keys.each {|uom| assert units_of_measurement.include?(uom) }
   end
+
+  def test_delivery_confirmation
+    result = Nokogiri::XML(@carrier.send(:build_shipment_request,
+                                         @locations[:beverly_hills],
+                                         @locations[:annapolis],
+                                         @packages.values_at(
+                                            :chocolate_stuff),
+                                         :test => true,
+                                         :delivery_confirmation => :delivery_confirmation_adult_signature_required))
+    assert_equal '2', result.search('/ShipmentConfirmRequest/Shipment/ShipmentServiceOptions/DeliveryConfirmation/DCISType').text
+  end
 end

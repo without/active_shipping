@@ -152,6 +152,18 @@ module ActiveMerchant
         "Canadian dollar" => "CAD"
       }
 
+      SHIPMENT_DELIVERY_CONFIRMATION_CODES = {
+        delivery_confirmation_signature_required: 1,
+        delivery_confirmation_adult_signature_required: 2
+      }
+
+      PACKAGE_DELIVERY_CONFIRMATION_CODES = {
+        delivery_confirmation: 1,
+        delivery_confirmation_signature_required: 2,
+        delivery_confirmation_adult_signature_required: 3,
+        usps_delivery_confirmation: 4
+      }
+
       def requirements
         [:key, :login, :password]
       end
@@ -347,6 +359,11 @@ module ActiveMerchant
             end
             # Optional.
             shipment_service_options = XmlNode.new('ShipmentServiceOptions') do |opts|
+              if delivery_confirmation = options[:delivery_confirmation]
+                opts << XmlNode.new('DeliveryConfirmation') do |dc|
+                  dc << XmlNode.new('DCISType', SHIPMENT_DELIVERY_CONFIRMATION_CODES[delivery_confirmation])
+                end
+              end
               international_forms_node = build_international_forms_node(shipment, options)
               opts << international_forms_node if international_forms_node
 
