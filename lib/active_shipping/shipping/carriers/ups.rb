@@ -541,13 +541,13 @@ module ActiveMerchant
             end
           end
 
-          package_service_options = XmlNode.new('PackageServiceOptions')
-          if delivery_confirmation = options[:delivery_confirmation]
-            package_service_options << XmlNode.new('DeliveryConfirmation') do |dc|
-              dc << XmlNode.new('DCISType', PACKAGE_DELIVERY_CONFIRMATION_CODES[delivery_confirmation])
-            end
-          end
-          package_node << package_service_options if package_service_options.children.count > 0
+          # package_service_options = XmlNode.new('PackageServiceOptions')
+          # if delivery_confirmation = options[:delivery_confirmation]
+          #   package_service_options << XmlNode.new('DeliveryConfirmation') do |dc|
+          #     dc << XmlNode.new('DCISType', PACKAGE_DELIVERY_CONFIRMATION_CODES[delivery_confirmation])
+          #   end
+          # end
+          # package_node << package_service_options if package_service_options.children.count > 0
 
           package_node
 
