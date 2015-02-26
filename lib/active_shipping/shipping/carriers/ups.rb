@@ -197,7 +197,7 @@ module ActiveMerchant
           confirm_request = build_shipment_request(origin, destination, packages, options)
           logger.debug(confirm_request) if logger
 
-          confirm_response = commit(:ship_confirm, save_request(access_request + confirm_request), (options[:test] || false))
+          confirm_response = commit(:ship_confirm, save_request(access_request + confirm_request).tap{|r| Rails.logger.debug r}, (options[:test] || false))
           logger.debug(confirm_response) if logger
 
           # ... now, get the digest, it's needed to get the label.  In theory,
