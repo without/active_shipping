@@ -369,9 +369,10 @@ class UPSTest < Test::Unit::TestCase
     mappings.keys.each {|uom| assert units_of_measurement.include?(uom) }
   end
 
-  def test_delivery_confirmation
+  def test_delivery_confirmation_different_country
+    # see Appendix P in Shipping Package XML Developers Guide.pdf
     result = Nokogiri::XML(@carrier.send(:build_shipment_request,
-                                         @locations[:beverly_hills],
+                                         @locations[:ottawa],
                                          @locations[:annapolis],
                                          @packages.values_at(
                                             :chocolate_stuff),
@@ -380,14 +381,39 @@ class UPSTest < Test::Unit::TestCase
     assert_equal '2', result.search('/ShipmentConfirmRequest/Shipment/ShipmentServiceOptions/DeliveryConfirmation/DCISType').text
   end
 
-  # def test_delivery_confirmation_on_package
-  #   result = Nokogiri::XML(@carrier.send(:build_shipment_request,
-  #                                        @locations[:beverly_hills],
-  #                                        @locations[:annapolis],
-  #                                        @packages.values_at(
-  #                                           :chocolate_stuff),
-  #                                        :test => true,
-  #                                        :delivery_confirmation => :delivery_confirmation_adult_signature_required))
-  #   assert_equal '3', result.search('/ShipmentConfirmRequest/Shipment/Package/PackageServiceOptions/DeliveryConfirmation/DCISType').text
-  # end
+  def test_delivery_confirmation_same_country
+    # see Appendix P in Shipping Package XML Developers Guide.pdf
+    result = Nokogiri::XML(@carrier.send(:build_shipment_request,
+                                         @locations[:beverly_hills],
+                                         @locations[:annapolis],
+                                         @packages.values_at(
+                                            :chocolate_stuff),
+                                         :test => true,
+                                         :delivery_confirmation => :delivery_confirmation_adult_signature_required))
+    assert_equal '', result.search('/ShipmentConfirmRequest/Shipment/ShipmentServiceOptions/DeliveryConfirmation/DCISType').text
+  end
+
+  def test_delivery_confirmation_on_package_different_countries
+    # see Appendix P in Shipping Package XML Developers Guide.pdf
+    result = Nokogiri::XML(@carrier.send(:build_shipment_request,
+                                         @locations[:ottawa],
+                                         @locations[:annapolis],
+                                         @packages.values_at(
+                                            :chocolate_stuff),
+                                         :test => true,
+                                         :delivery_confirmation => :delivery_confirmation_adult_signature_required))
+    assert_equal '', result.search('/ShipmentConfirmRequest/Shipment/Package/PackageServiceOptions/DeliveryConfirmation/DCISType').text
+  end
+
+  def test_delivery_confirmation_on_package_same_country
+    # see Appendix P in Shipping Package XML Developers Guide.pdf
+    result = Nokogiri::XML(@carrier.send(:build_shipment_request,
+                                         @locations[:beverly_hills],
+                                         @locations[:annapolis],
+                                         @packages.values_at(
+                                            :chocolate_stuff),
+                                         :test => true,
+                                         :delivery_confirmation => :delivery_confirmation_adult_signature_required))
+    assert_equal '3', result.search('/ShipmentConfirmRequest/Shipment/Package/PackageServiceOptions/DeliveryConfirmation/DCISType').text
+  end
 end

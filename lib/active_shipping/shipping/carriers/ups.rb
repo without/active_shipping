@@ -197,7 +197,7 @@ module ActiveMerchant
           confirm_request = build_shipment_request(origin, destination, packages, options)
           logger.debug(confirm_request) if logger
 
-          confirm_response = commit(:ship_confirm, save_request(access_request + confirm_request).tap{|r| Rails.logger.debug r}, (options[:test] || false))
+          confirm_response = commit(:ship_confirm, save_request(access_request + confirm_request), (options[:test] || false))
           logger.debug(confirm_response) if logger
 
           # ... now, get the digest, it's needed to get the label.  In theory,
@@ -298,6 +298,7 @@ module ActiveMerchant
 
             packages.each do |package|
               options[:imperial] ||= IMPERIAL_COUNTRIES.include?(origin.country_code(:alpha2))
+              options[:package_delivery_confirmation] ||= options[:delivery_confirmation] if origin.country == destination.country
               shipment << build_package_node(package, options)
             end
 
@@ -359,7 +360,7 @@ module ActiveMerchant
             end
             # Optional.
             shipment_service_options = XmlNode.new('ShipmentServiceOptions') do |opts|
-              if delivery_confirmation = options[:delivery_confirmation]
+              if origin.country != destination.country && (delivery_confirmation = options[:delivery_confirmation])
                 opts << XmlNode.new('DeliveryConfirmation') do |dc|
                   dc << XmlNode.new('DCISType', SHIPMENT_DELIVERY_CONFIRMATION_CODES[delivery_confirmation])
                 end
@@ -412,6 +413,8 @@ module ActiveMerchant
             # A request may specify multiple packages.
             options[:imperial] ||= IMPERIAL_COUNTRIES.include?(origin.country_code(:alpha2))
             packages.each do |package|
+              options[:imperial] ||= IMPERIAL_COUNTRIES.include?(origin.country_code(:alpha2))
+              options[:package_delivery_confirmation] ||= options[:delivery_confirmation] if origin.country == destination.country
               shipment << build_package_node(package, options)
             end
           end
@@ -541,13 +544,13 @@ module ActiveMerchant
             end
           end
 
-          # package_service_options = XmlNode.new('PackageServiceOptions')
-          # if delivery_confirmation = options[:delivery_confirmation]
-          #   package_service_options << XmlNode.new('DeliveryConfirmation') do |dc|
-          #     dc << XmlNode.new('DCISType', PACKAGE_DELIVERY_CONFIRMATION_CODES[delivery_confirmation])
-          #   end
-          # end
-          # package_node << package_service_options if package_service_options.children.count > 0
+          package_service_options = XmlNode.new('PackageServiceOptions')
+          if delivery_confirmation = options[:package_delivery_confirmation]
+            package_service_options << XmlNode.new('DeliveryConfirmation') do |dc|
+              dc << XmlNode.new('DCISType', PACKAGE_DELIVERY_CONFIRMATION_CODES[delivery_confirmation])
+            end
+          end
+          package_node << package_service_options if package_service_options.children.count > 0
 
           package_node
 
