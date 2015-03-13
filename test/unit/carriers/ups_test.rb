@@ -425,7 +425,7 @@ class UPSTest < Test::Unit::TestCase
                                             :chocolate_stuff),
                                          :test => true,
                                          :delivery_confirmation => :delivery_confirmation_adult_signature_required,
-                                         :ship_notification => ActiveMerchant::Shipping::UPS::ShipNotification.new(email: 'email@example.com', text: 'Your package has shipped')))
+                                         :ship_notification => ActiveMerchant::Shipping::UPS::ShipNotification.new('email@example.com', text: 'Your package has shipped')))
     assert_equal '6', result.search('/ShipmentConfirmRequest/Shipment/ShipmentServiceOptions/Notification/NotificationCode').text
     assert_equal 'email@example.com', result.search('/ShipmentConfirmRequest/Shipment/ShipmentServiceOptions/Notification/EMailMessage/EMailAddress').text
     assert_equal 'Your package has shipped', result.search('/ShipmentConfirmRequest/Shipment/ShipmentServiceOptions/Notification/EMailMessage/Memo').text

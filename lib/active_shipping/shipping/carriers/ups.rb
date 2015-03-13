@@ -6,8 +6,8 @@ module ActiveMerchant
       class ShipNotification
         attr_accessor :email, :text
 
-        def initialize(options)
-          self.email = options[:email]
+        def initialize(email, options)
+          self.email = email
           self.text = options[:text]
         end
       end
