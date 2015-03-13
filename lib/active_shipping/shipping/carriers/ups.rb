@@ -3,6 +3,15 @@
 module ActiveMerchant
   module Shipping
     class UPS < Carrier
+      class ShipNotification
+        attr_accessor :email, :text
+
+        def initialize(options)
+          self.email = options[:email]
+          self.text = options[:text]
+        end
+      end
+
       self.retry_safe = true
 
       cattr_accessor :default_options
@@ -369,6 +378,9 @@ module ActiveMerchant
               opts << international_forms_node if international_forms_node
 
               opts   << XmlNode.new('SaturdayDelivery') if options[:saturday_delivery]
+              if ship_notification = options[:ship_notification]
+                opts << build_ship_notification_node(ship_notification)
+              end
             end
             shipment << shipment_service_options if shipment_service_options.children.count != 0
             # Optional.
@@ -598,6 +610,16 @@ module ActiveMerchant
         end
         forms_node << XmlNode.new("ReasonForExport", invoice.reason_for_export)
         forms_node << XmlNode.new("DeclarationStatement", invoice.declaration)
+      end
+
+      def build_ship_notification_node(notification)
+        XmlNode.new('Notification') do |notification_node|
+          notification_node << XmlNode.new('NotificationCode', '6')
+          notification_node << XmlNode.new('EMailMessage') do |email_node|
+            email_node << XmlNode.new('EMailAddress', notification.email)
+            email_node << XmlNode.new('Memo', notification.text) if notification.text
+          end
+        end
       end
 
       def build_void_request(shipment_identification_number)

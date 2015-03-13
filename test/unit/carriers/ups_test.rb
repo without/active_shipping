@@ -416,4 +416,18 @@ class UPSTest < Test::Unit::TestCase
                                          :delivery_confirmation => :delivery_confirmation_adult_signature_required))
     assert_equal '3', result.search('/ShipmentConfirmRequest/Shipment/Package/PackageServiceOptions/DeliveryConfirmation/DCISType').text
   end
+
+  def test_ship_notification
+    result = Nokogiri::XML(@carrier.send(:build_shipment_request,
+                                         @locations[:beverly_hills],
+                                         @locations[:annapolis],
+                                         @packages.values_at(
+                                            :chocolate_stuff),
+                                         :test => true,
+                                         :delivery_confirmation => :delivery_confirmation_adult_signature_required,
+                                         :ship_notification => ActiveMerchant::Shipping::UPS::ShipNotification.new(email: 'email@example.com', text: 'Your package has shipped')))
+    assert_equal '6', result.search('/ShipmentConfirmRequest/Shipment/ShipmentServiceOptions/Notification/NotificationCode').text
+    assert_equal 'email@example.com', result.search('/ShipmentConfirmRequest/Shipment/ShipmentServiceOptions/Notification/EMailMessage/EMailAddress').text
+    assert_equal 'Your package has shipped', result.search('/ShipmentConfirmRequest/Shipment/ShipmentServiceOptions/Notification/EMailMessage/Memo').text
+  end
 end
